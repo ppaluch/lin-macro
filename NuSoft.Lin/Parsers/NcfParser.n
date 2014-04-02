@@ -1,0 +1,81 @@
+﻿using Nemerle;
+using Nemerle.Collections;
+using Nemerle.Text;
+using Nemerle.Utility;
+using Nemerle.Peg;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace NuSoft.Lin.Macro.Parsers
+{
+    /// <summary>
+    /// Description of NcfParser.
+    /// </summary>
+    [PegGrammar(Options = EmitDebugSource, Start,
+    grammar{
+        
+        Space              : void      = ' ';
+        Spaces             : void      = Space*;
+        Tab                : void      = '\t';
+        NewLine            : void      = '\n';
+        WhiteChars         : void      = ( Space / Tab / NewLine )*;
+        SpaceTabs          : void      = ( Space / Tab )*;
+                                       
+        Digit                          = ['0'..'9'];
+        Number             : int       = Digit+;
+        HexNum             : int       = "0x" ( Digit / ['A'..'F'] )+;
+        DecimalNum         : decimal   = Digit+ ('.' Digit+)?;
+        Character                      = ['a'..'z'] / ['A'..'Z'];
+        Characters         : string    = Character+;
+        AlphaNumeric       : string    = ( Digit / Character )+;
+                                       
+                                       
+        Comment            : void      = "//" SpaceTabs ( AlphaNumeric SpaceTabs )* NewLine;
+        CON                : void      = SpaceTabs (Comment / NewLine) ;
+                                       
+                                       
+        LinLanguageVersion : string    = "LIN_language_version" SpaceTabs '=' SpaceTabs '"' AlphaNumeric "\";" CON; 
+        LinProtocolVersion : string    = "LIN_protocol_version" SpaceTabs '=' SpaceTabs '"' AlphaNumeric "\";" CON;
+        Supplier           : int       = "supplier" SpaceTabs '=' SpaceTabs ( Number / HexNum ) ';' CON;
+        Function           : int       = "function" SpaceTabs '=' SpaceTabs ( Number / HexNum ) ';' CON;
+        Variant            : int       = "variant" SpaceTabs '=' SpaceTabs ( Number / HexNum ) ';' CON;
+        BitRate            : decimal   = "bitrate" SpaceTabs '=' SpaceTabs DecimalNum ("bps" / "kbps")? ';' CON;
+        ResponseTolerance  : int       = "response_tolerance" SpaceTabs '=' SpaceTabs Number "%;" CON;
+        NAD                : int       = "NAD" SpaceTabs '=' SpaceTabs HexNum ';' SpaceTabs  CON;
+        P2Min              : int       = "P2_min" SpaceTabs '=' SpaceTabs Number SpaceTabs "ms;" CON;
+        STMin              : int       = "ST_min" SpaceTabs '=' SpaceTabs Number SpaceTabs "ms;" CON;
+        SupportSid         : list[int] = "support_sid" WhiteChars '{' WhiteChars HexNum  ( WhiteChars ',' HexNum)* WhiteChars '}' CON;
+        MaxMessageLength   : int       = "max_message_length" SpaceTabs '=' SpaceTabs Number ';' SpaceTabs CON;
+        Length             : int       = "length" SpaceTabs '=' SpaceTabs Number ';' SpaceTabs  CON;
+        MinPeriod          : int       = "min_period" SpaceTabs '=' SpaceTabs Number SpaceTabs "ms;" CON;
+        MaxPeriod          : int       = "max_period" SpaceTabs '=' SpaceTabs Number SpaceTabs "ms;" CON;
+        FrameId            : int       = "frame_id" SpaceTabs '=' SpaceTabs HexNum ';' SpaceTabs  CON;
+                                     
+                                     
+        General            : int       = "general" SpaceTabs '{' CON SpaceTabs LinProtocolVersion SpaceTabs Supplier SpaceTabs Function SpaceTabs Variant SpaceTabs BitRate (SpaceTabs ResponseTolerance)? '}' CON;
+        
+        Diagnostic         : int       = "diagnostic" SpaceTabs '{' CON SpaceTabs NAD (SpaceTabs P2Min)? (SpaceTabs STMin)? SpaceTabs SupportSid (SpaceTabs MaxMessageLength)? '}' CON;
+        
+        FrameType          : int       = "subscribe" / "publish";
+        
+        
+        Signal             : int       = AlphaNumeric SpaceTabs '{' CON SpaceTabs InitValue SpaceTabs Size SpaceTabs Offset (SpaceTabs EncodingName)? '}' CON;
+        
+        Signals            : int       = "signals" SpaceTabs '{' CON (SpaceTabs Signal)+ SpaceTabs '}' CON;
+        
+        Frame              : int       = FrameType SpaceTabs AlphaNumeric SpaceTabs '{' CON SpaceTabs Length (SpaceTabs MinPeriod)? (SpaceTabs MaxPeriod)? (SpaceTabs FrameId)? SpaceTabs Signals SpaceTabs '}' CON;
+        
+        Frames             : int       = "frames" SpaceTabs '{' CON (SpaceTabs Frame)+ '}' CON;
+                                       
+        Node               : int       = "node" SpaceTabs Characters SpaceTabs '{' CON SpaceTabs General SpaceTabs Diagnostic SpaceTabs Frames '}' CON;
+                                       
+        Start              : int       = "Node_capability_file;" CON SpaceTabs LinLanguageVersion SpaceTabs Node WhiteChars;
+    }]
+    class NcfParser
+    {
+    }
+    
+    
+}
